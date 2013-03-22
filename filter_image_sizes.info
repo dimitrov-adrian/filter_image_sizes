@@ -1,0 +1,4 @@
+name = Filter Image Size
+description = Move image sizes from attributes height and width to styles
+package = Media
+core = 7.x

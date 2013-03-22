@@ -1,0 +1,83 @@
+<?php
+/**
+ * @file
+ * Module file for filter_image_size.
+ */
+
+
+/**
+ * Implements hook_filter_info().
+ */
+function filter_image_sizes_filter_info() {
+  $filters = array();
+  $filters['filter_image_sizes'] = array(
+    'title' => t('Filter Image Sizes'),
+    'description' => t('Convert width="" and height="" to style properties.'),
+    'process callback' => '_filter_image_sizes_process',
+    'tips callback' => '_filter_image_sizes_tips',
+  );
+  return $filters;
+}
+
+/**
+ * Image sizes filter process callback.
+ */
+function _filter_image_sizes_process($html, $filter) {
+
+  // Get all images.
+  if (preg_match_all('#<img(?:\s*[\w]*(?:=(?:"[^\"]*"|\'[^\\\']*\'|[^\s]))*\s*)*\/?>#iU', $html, $images)) {
+    $images = array_shift($images);
+    $replacements = array();
+
+    // Build the attribute value pattern that is matching attribute value.
+    $att_pattern = '\s*\=\s*(?:"([^\"]*)"|\'([^\\\']*)\'|([^\s]*))';
+
+    foreach ($images as $img) {
+      $new_img_tag = $img;
+      $new_img_style = '';
+
+      if (preg_match('#width' . $att_pattern . '#iU', $img, $width)) {
+        $new_img_tag = str_replace($width[0], '', $new_img_tag);
+        if (is_numeric($width[1])) {
+          $width[1] .= 'px';
+        }
+        $new_img_style .= 'width:' . $width[1] . ';';
+      }
+      if (preg_match('#height' . $att_pattern . '#iU', $img, $height)) {
+        $new_img_tag = str_replace($height[0], '', $new_img_tag);
+        if (is_numeric($width[1])) {
+          $width[1] .= 'px';
+        }
+        $new_img_style .= 'height:' . $height[1] . ';';
+      }
+
+      if ($new_img_style) {
+        // If there is style attribute aleready, then append new style to it.
+        if (preg_match('#style' . $att_pattern . '#iU', $img, $style)) {
+          $new_img_style = 'style="' . $new_img_style . $style[1] . '"';
+          $new_img_tag = str_replace($style[0], $new_img_style, $new_img_tag);
+        }
+        // Otherwise prepend before <img> attributes.
+        else {
+          $new_img_style = ' style="' . $new_img_style . '" ';
+          $new_img_tag = preg_replace('#^\<\s*img#iU', '<img' . $new_img_style, $new_img_tag);
+        }
+
+        $new_img_tag = preg_replace('#\s{2,}#', ' ', $new_img_tag);
+        $replacements[$img] = $new_img_tag;
+      }
+    }
+    if ($replacements) {
+      $html = strtr($html, $replacements);
+    }
+  }
+
+  return $html;
+}
+
+/**
+ * Filter tips callback for image sizes filter.
+ */
+function _filter_image_sizes_tips($filter, $format, $long = FALSE) {
+  return t('Convert all images with width="" and height="" attributes to styles.');
+}
